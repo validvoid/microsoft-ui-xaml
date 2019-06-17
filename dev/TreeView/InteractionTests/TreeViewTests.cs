@@ -2348,10 +2348,13 @@ namespace Windows.UI.Xaml.Tests.MUXControls.InteractionTests
             TreeViewPartialSelectionTest(isContentMode:true);
         }
 
-        [TestMethod]
-        [TestProperty("TreeViewTestSuite", "A")]
-        public void TreeViewSelectedNodeTest()
+        private void TreeViewSingleSelectionTest(bool isContentMode = false)
         {
+            if (isContentMode && IsLowerThanRS5())
+            {
+                return;
+            }
+
             using (var setup = new TestSetupHelper("TreeView Tests"))
             {
                 var root = new TreeItem(LabelFirstItem());
@@ -2367,11 +2370,36 @@ namespace Windows.UI.Xaml.Tests.MUXControls.InteractionTests
                 ClickButton("GetSelected");
                 Verify.AreEqual("Selected: Root.0", ReadResult());
 
+                // Collapse/expand shouldn't affect selection
+                root.Collapse();
+                Wait.ForIdle();
+                ClickButton("GetSelected");
+                Verify.AreEqual("Selected: Root.0", ReadResult());
+
+                root.Expand();
+                Wait.ForIdle();
+                ClickButton("GetSelected");
+                Verify.AreEqual("Selected: Root.0", ReadResult());
+
                 ClickButton("ToggleRoot0Selection");
 
                 ClickButton("GetSelected");
                 Verify.AreEqual("Nothing selected", ReadResult());
             }
+        }
+
+        [TestMethod]
+        [TestProperty("TreeViewTestSuite", "A")]
+        public void TreeViewSelectedNodeTest()
+        {
+            TreeViewSingleSelectionTest();
+        }
+
+        [TestMethod]
+        [TestProperty("TreeViewTestSuite", "B")]
+        public void TreeViewSelectedItemTest()
+        {
+            TreeViewSingleSelectionTest(isContentMode: true);
         }
 
         [TestMethod]
@@ -2408,40 +2436,6 @@ namespace Windows.UI.Xaml.Tests.MUXControls.InteractionTests
 
                 ClickButton("GetSelected");
                 Verify.AreEqual("Selected: Root.0", ReadResult());
-            }
-        }
-
-        [TestMethod]
-        [TestProperty("TreeViewTestSuite", "B")]
-        public void TreeViewSelectedItemTest()
-        {
-            // databinding is only available on RS5+
-            if(IsLowerThanRS5())
-            {
-                return;
-            }
-
-            using (var setup = new TestSetupHelper("TreeView Tests"))
-            {
-                SetContentMode(true);
-
-                var root = new TreeItem(LabelFirstItem());
-                root.Expand();
-                Wait.ForIdle();
-
-                ClickButton("LabelItems");
-                UIObject root0 = FindElement.ById("Root.0");
-                Verify.IsNotNull(root0, "Verifying Root.0 is found");
-
-                InputHelper.Tap(root0);
-
-                ClickButton("GetSelected");
-                Verify.AreEqual("Selected: Root.0", ReadResult());
-
-                ClickButton("ToggleRoot0Selection");
-
-                ClickButton("GetSelected");
-                Verify.AreEqual("Nothing selected", ReadResult());
             }
         }
 

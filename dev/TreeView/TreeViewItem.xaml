@@ -85,6 +85,14 @@
                                     </Storyboard>
                                 </VisualState>
                             </VisualStateGroup>
+                            <VisualStateGroup x:Name="TreeViewSingleSelectStates">
+                                <VisualState x:Name="TreeViewSingleSelectUnselected"/>
+                                <VisualState x:Name="TreeViewSingleSelectSelected">
+                                    <VisualState.Setters>
+                                        <Setter Target="MultiSelectGrid.Background" Value="{ThemeResource TreeViewItemBackgroundSelected}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                            </VisualStateGroup>
                             <VisualStateGroup x:Name="TreeViewMultiSelectStates">
                                 <VisualState x:Name="TreeViewMultiSelectDisabled"/>
                                 <VisualState x:Name="TreeViewMultiSelectEnabledUnselected">

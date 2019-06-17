@@ -58,23 +58,21 @@ winrt::DependencyObject TreeView::ContainerFromNode(winrt::TreeViewNode const& n
 
 void TreeView::SelectedNode(winrt::TreeViewNode const& node)
 {
-    if (auto listControl = ListControl())
+    auto selectedNodes = SelectedNodes();
+    if (selectedNodes.Size() > 0)
     {
-        listControl->SelectedItem(listControl->IsContentMode() ? node.Content() : node);
+        selectedNodes.Clear();
+    }
+    if (node)
+    {
+        selectedNodes.Append(node);
     }
 }
 
 winrt::TreeViewNode TreeView::SelectedNode()
 {
-    if (auto listControl = ListControl())
-    {
-        if (auto selectedItem = listControl->SelectedItem())
-        {
-            return listControl->NodeFromItem(selectedItem);
-        }
-    }
-
-    return nullptr;
+    auto nodes = SelectedNodes();
+    return nodes.Size() > 0 ? nodes.GetAt(0) : nullptr;
 }
 
 
@@ -94,16 +92,21 @@ winrt::IVector<winrt::TreeViewNode> TreeView::SelectedNodes()
 
 void TreeView::SelectedItem(winrt::IInspectable const& item)
 {
-    if (auto listControl = ListControl())
+    auto selectedItems = SelectedItems();
+    if (selectedItems.Size() > 0)
     {
-        auto node = listControl->NodeFromItem(item);
-        listControl->SelectedItem(node);
+        selectedItems.Clear();
+    }
+    if (item)
+    {
+        selectedItems.Append(item);
     }
 }
 
 winrt::IInspectable TreeView::SelectedItem()
 {
-    return ListControl() ? ListControl()->SelectedItem() : nullptr;
+    auto items = SelectedItems();
+    return items.Size() > 0 ? items.GetAt(0) : nullptr;
 }
 
 winrt::IVector<winrt::IInspectable> TreeView::SelectedItems()
@@ -142,6 +145,12 @@ void TreeView::OnItemClick(const winrt::IInspectable& /*sender*/, const winrt::W
 {
     auto itemInvokedArgs = winrt::make_self<TreeViewItemInvokedEventArgs>();
     itemInvokedArgs->InvokedItem(args.ClickedItem());
+    if (SelectionMode() == winrt::TreeViewSelectionMode::Single)
+    {
+        auto clickedNode = ListControl()->NodeFromItem(args.ClickedItem());
+        SelectedNode(clickedNode);
+    }
+
     m_itemInvokedEventSource(*this, *itemInvokedArgs);
 }
 
@@ -204,31 +213,7 @@ void TreeView::OnPropertyChanged(const winrt::DependencyPropertyChangedEventArgs
 
     if (property == s_SelectionModeProperty && m_listControl)
     {
-        winrt::TreeViewSelectionMode value = SelectionMode();
-        switch (value)
-        {
-            case winrt::TreeViewSelectionMode::None:
-            {
-                m_listControl.get().SelectionMode(winrt::ListViewSelectionMode::None);
-                UpdateItemsSelectionMode(false);
-            }
-            break;
-
-            case winrt::TreeViewSelectionMode::Single:
-            {
-                m_listControl.get().SelectionMode(winrt::ListViewSelectionMode::Single);
-                UpdateItemsSelectionMode(false);
-            }
-            break;
-
-            case winrt::TreeViewSelectionMode::Multiple:
-            {
-                m_listControl.get().SelectionMode(winrt::ListViewSelectionMode::None);
-                UpdateItemsSelectionMode(true);
-            }
-            break;
-
-        }
+        UpdateSelectionMode(SelectionMode());
     }
     else if (property == s_ItemsSourceProperty)
     {
@@ -241,6 +226,28 @@ void TreeView::OnPropertyChanged(const winrt::DependencyPropertyChangedEventArgs
         }
 
         winrt::get_self<TreeViewNode>(m_rootNode.get())->ItemsSource(ItemsSource());
+    }
+}
+
+void TreeView::UpdateSelectionMode(winrt::TreeViewSelectionMode selectionMode)
+{
+    if (auto listControl = ListControl())
+    {
+        listControl->SelectionMode(winrt::ListViewSelectionMode::None);
+        auto viewModel = listControl->ListViewModel();
+        viewModel->SelectionMode(selectionMode);
+
+        switch (selectionMode)
+        {
+        case winrt::TreeViewSelectionMode::None:
+        case winrt::TreeViewSelectionMode::Single:
+            UpdateItemsSelectionMode(false);
+            break;
+
+        case winrt::TreeViewSelectionMode::Multiple:
+            UpdateItemsSelectionMode(true);
+            break;
+        }
     }
 }
 
@@ -316,19 +323,7 @@ void TreeView::OnApplyTemplate()
         viewModel->NodeExpanding({ this, &TreeView::OnNodeExpanding });
         viewModel->NodeCollapsed({ this, &TreeView::OnNodeCollapsed });
 
-        auto selectionMode = SelectionMode();
-        if (selectionMode == winrt::TreeViewSelectionMode::Single)
-        {
-            listControl.SelectionMode(winrt::ListViewSelectionMode::Single);
-        }
-        else
-        {
-            listControl.SelectionMode(winrt::ListViewSelectionMode::None);
-            if (selectionMode == winrt::TreeViewSelectionMode::Multiple)
-            {
-                UpdateItemsSelectionMode(true);
-            }
-        }
+        UpdateSelectionMode(SelectionMode());
 
         m_itemClickRevoker = listControl.ItemClick(winrt::auto_revoke, { this, &TreeView::OnItemClick });
         m_containerContentChangingRevoker = listControl.ContainerContentChanging(winrt::auto_revoke, { this, &TreeView::OnContainerContentChanging });

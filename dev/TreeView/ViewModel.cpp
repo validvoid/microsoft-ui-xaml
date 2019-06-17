@@ -502,15 +502,15 @@ winrt::TreeViewList ViewModel::ListControl()
     return m_TreeViewList.get();
 }
 
-bool ViewModel::IsInSingleSelectionMode()
-{
-    return m_TreeViewList.get().SelectionMode() == winrt::ListViewSelectionMode::Single;
-}
-
 // Private helpers
-void ViewModel::AddNodeToView(const winrt::TreeViewNode& value, unsigned int index)
+void ViewModel::AddNodeToView(const winrt::TreeViewNode& node, unsigned int index)
 {
-    InsertAt(index, value);
+    InsertAt(index, node);
+
+    if (IsContentMode())
+    {
+        m_itemToNodeMap.get().Insert(node.Content(), node);
+    }
 }
 
 int ViewModel::AddNodeDescendantsToView(const winrt::TreeViewNode& value, unsigned int index, int offset)
@@ -712,7 +712,7 @@ void ViewModel::UpdateSelection(winrt::TreeViewNode const& selectNode, TreeNodeS
     {
         UpdateNodeSelection(selectNode, selectionState);
 
-        if (!IsInSingleSelectionMode())
+        if (m_selectionMode == winrt::TreeViewSelectionMode::Multiple)
         {
             UpdateSelectionStateOfDescendants(selectNode, selectionState);
             UpdateSelectionStateOfAncestors(selectNode);
@@ -805,6 +805,11 @@ winrt::IVector<winrt::IInspectable> ViewModel::GetSelectedItems()
 winrt::TreeViewNode ViewModel::GetAssociatedNode(winrt::IInspectable item)
 {
     return m_itemToNodeMap.get().Lookup(item);
+}
+
+void ViewModel::SelectionMode(winrt::TreeViewSelectionMode mode)
+{
+    m_selectionMode = mode;
 }
 
 bool ViewModel::IndexOfNode(winrt::TreeViewNode const& targetNode, uint32_t& index)

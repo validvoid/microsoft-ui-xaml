@@ -293,24 +293,46 @@ void TreeViewItem::UpdateSelection(TreeNodeSelectionState const& state)
     {
         if (auto listControl = treeView->ListControl())
         {
-            if (listControl->IsMultiselect())
+            if (auto node = TreeNode())
             {
-                if (auto node = TreeNode())
+                listControl->ListViewModel()->UpdateSelection(node, state);
+                UpdateTreeViewItemVisualState(state, listControl->IsMultiselect());
+
+                if (listControl->IsMultiselect())
                 {
-                    listControl->ListViewModel()->UpdateSelection(node, state);
-                    UpdateMultipleSelection(state);
-                }
-            }
-            else
-            {
-                // Single selection, just set it in ListView.
-                auto index = listControl->IndexFromContainer(*this);
-                if (index >= 0)
-                {
-                    listControl->SelectedIndex(index);
+                    UpdateCheckBoxState(state);
                 }
             }
         }
+    }
+}
+
+void TreeViewItem::OnIsSelectedChanged(const winrt::DependencyObject& /*sender*/, const winrt::DependencyProperty& args)
+{
+    bool isSelectedPropertyValue = unbox_value<bool>(GetValue(args));
+    if (auto node = TreeNode())
+    {
+        bool isNodeSelected = winrt::get_self<TreeViewNode>(node)->SelectionState() == TreeNodeSelectionState::Selected;
+        if (isNodeSelected != isSelectedPropertyValue)
+        {
+            UpdateSelection(isSelectedPropertyValue ? TreeNodeSelectionState::Selected : TreeNodeSelectionState::UnSelected);
+        }
+    }
+}
+
+void TreeViewItem::UpdateCheckBoxState(TreeNodeSelectionState const& state)
+{
+    switch (state)
+    {
+    case TreeNodeSelectionState::Selected:
+        m_selectionBox.get().IsChecked(true);
+        break;
+    case TreeNodeSelectionState::PartialSelected:
+        m_selectionBox.get().IsChecked(nullptr);
+        break;
+    case TreeNodeSelectionState::UnSelected:
+        m_selectionBox.get().IsChecked(false);
+        break;
     }
 }
 
@@ -423,15 +445,15 @@ bool TreeViewItem::IsInReorderMode(winrt::VirtualKey key)
     return canReorderItems && isDirectionPressed && isShiftPressed && isAltPressed && !isControlPressed;
 }
 
-void TreeViewItem::UpdateTreeViewItemVisualState(TreeNodeSelectionState const& state)
+void TreeViewItem::UpdateTreeViewItemVisualState(TreeNodeSelectionState const& state, bool isMultiSelect)
 {
     if (state == TreeNodeSelectionState::Selected)
     {
-        winrt::VisualStateManager::GoToState(*this, L"TreeViewMultiSelectEnabledSelected", false);
+        winrt::VisualStateManager::GoToState(*this, isMultiSelect ? L"TreeViewMultiSelectEnabledSelected" : L"TreeViewSingleSelectSelected", false);
     }
     else
     {
-        winrt::VisualStateManager::GoToState(*this, L"TreeViewMultiSelectEnabledUnselected", false);
+        winrt::VisualStateManager::GoToState(*this, isMultiSelect ? L"TreeViewMultiSelectEnabledUnselected" : L"TreeViewSingleSelectUnselected", false);
     }
 }
 
@@ -443,7 +465,7 @@ void TreeViewItem::OnCheckToggle(winrt::IInspectable const& sender, winrt::Route
         int index = listControl->IndexFromContainer(*this);
         auto selectionState = CheckBoxSelectionState(sender.as<winrt::CheckBox>());
         listControl->ListViewModel()->ModifySelectByIndex(index, selectionState);
-        UpdateTreeViewItemVisualState(selectionState);
+        UpdateTreeViewItemVisualState(selectionState, /*isMultiSelect=*/ true);
         RaiseSelectionChangeEvents(selectionState == TreeNodeSelectionState::Selected);
     }
 }
@@ -462,79 +484,19 @@ void TreeViewItem::RaiseSelectionChangeEvents(bool isSelected)
     }
 }
 
-void TreeViewItem::OnIsSelectedChanged(const winrt::DependencyObject& /*sender*/, const winrt::DependencyProperty& args)
-{
-    bool isSelected = unbox_value<bool>(GetValue(args));
-    if (auto treeView = AncestorTreeView())
-    {
-        auto listControl = treeView->ListControl();
-        bool isMultiselect = listControl->IsMultiselect();
-        auto viewModel = listControl->ListViewModel();
-
-        // Checkbox is only used in multi-select mode
-        if (isMultiselect && isSelected != m_selectionBox.get().IsChecked().Value())
-        {
-            m_selectionBox.get().IsChecked(isSelected);
-        }
-
-        if (auto node = TreeNode())
-        {
-            auto selectedNodes = viewModel->GetSelectedNodes();
-
-            if (!isMultiselect)
-            {
-                selectedNodes.Clear();
-            }
-
-            if (isSelected)
-            {
-                selectedNodes.Append(node);
-            }
-            else
-            {
-                unsigned int index;
-                if (selectedNodes.IndexOf(node, index))
-                {
-                    selectedNodes.RemoveAt(index);
-                }
-            }
-        }
-    }
-}
-
-void TreeViewItem::UpdateMultipleSelection(TreeNodeSelectionState const& state)
-{
-    switch(state)
-    {
-    case TreeNodeSelectionState::Selected:
-        m_selectionBox.get().IsChecked(true);
-        break;
-    case TreeNodeSelectionState::PartialSelected:
-        m_selectionBox.get().IsChecked(nullptr);
-        break;
-    case TreeNodeSelectionState::UnSelected:
-        m_selectionBox.get().IsChecked(false);
-        break;
-    }
-    UpdateTreeViewItemVisualState(state);
-}
-
 bool TreeViewItem::IsSelectedInternal()
 {
-    // Check Selector::IsChecked for single selection since we use
-    // ListView's single selection. In multiple selection we roll our own.
-    bool isSelected = IsSelected(); 
+    bool selected = false;
     if (auto treeView = AncestorTreeView())
     {
-        auto listControl = treeView->ListControl();
-        if (listControl && listControl->IsMultiselect())
+        if (auto node = TreeNode())
         {
-            TreeNodeSelectionState state = CheckBoxSelectionState(m_selectionBox.get());
-            isSelected = state == TreeNodeSelectionState::Selected;
+            uint32_t index;
+            selected = treeView.get()->SelectedNodes().IndexOf(node, index);
         }
     }
 
-    return isSelected;
+    return selected;
 }
 
 void TreeViewItem::UpdateIndentation(int depth)
@@ -616,7 +578,7 @@ bool TreeViewItem::ToggleSelection()
 {
     auto currentState = CheckBoxSelectionState(m_selectionBox.get());
     auto newState = currentState == TreeNodeSelectionState::Selected ? TreeNodeSelectionState::UnSelected : TreeNodeSelectionState::Selected;
-    UpdateMultipleSelection(newState);
+    UpdateCheckBoxState(newState);
     return newState == TreeNodeSelectionState::Selected;
 }
 

@@ -53,10 +53,7 @@ private:
 
     winrt::ItemsSourceView m_itemsDataSource{ nullptr };
     winrt::ItemsSourceView::CollectionChanged_revoker m_itemItemsSourceViewChangedRevoker{};
-    void OnItemsSourceChanged(const winrt::IInspectable& sender, const winrt::NotifyCollectionChangedEventArgs& args);
-    void SyncRootNodesWithItemsSource();
-    void OnItemsAdded(int index, int count);
-    void OnItemsRemoved(int index, int count);
+    void UpdateSelectionMode(winrt::TreeViewSelectionMode selectionMode);
 
 public:
     // IFrameworkElementOverrides

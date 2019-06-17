@@ -23,7 +23,7 @@ public:
     TreeViewItem();
     ~TreeViewItem();
 
-    void UpdateMultipleSelection(TreeNodeSelectionState const& state);
+    void UpdateCheckBoxState(TreeNodeSelectionState const& state);
     void UpdateIndentation(int depth);
     bool IsSelectedInternal();
 
@@ -78,7 +78,7 @@ private:
     void UpdateNodeIsExpandedAsync(winrt::TreeViewNode const& node, bool isExpanded);
     bool IsInContentMode();
     TreeNodeSelectionState CheckBoxSelectionState(winrt::CheckBox const& checkBox);
-    void UpdateTreeViewItemVisualState(TreeNodeSelectionState const& state);
+    void UpdateTreeViewItemVisualState(TreeNodeSelectionState const& state, bool isMultiselect);
     void RaiseSelectionChangeEvents(bool isSelected);
 
     static bool IsDirectionalKey(winrt::VirtualKey key);
