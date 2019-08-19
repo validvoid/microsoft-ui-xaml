@@ -18,4 +18,6 @@
     <Thickness x:Key="ComboBoxMinHeight">24</Thickness>
     <Thickness x:Key="ComboBoxPadding">12,1,0,3</Thickness>
     <x:Double x:Key="NavigationViewItemOnLeftMinHeight">32</x:Double>
+    <CornerRadius x:Key="ControlCornerRadius">10,10,10,10</CornerRadius>
+    <CornerRadius x:Key="OverlayCornerRadius">10,10,10,10</CornerRadius>
 </ResourceDictionary>
